@@ -1,0 +1,12 @@
+# Python virtual environments, build and cache artifacts
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# OS cruft
+.DS_Store
+Thumbs.db

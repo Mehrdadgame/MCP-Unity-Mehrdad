@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m venv .venv)",
+      "Bash(./.venv/Scripts/python.exe -m pip install --quiet --upgrade pip pytest)",
+      "Bash(./.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(./.venv/Scripts/python.exe -m pip install --quiet -e .)",
+      "Bash(./.venv/Scripts/python.exe -c \"import asyncio; from unity_mcp import server; tools = asyncio.run\\(server.mcp.list_tools\\(\\)\\); print\\('FastMCP server OK; tools =', [t.name for t in tools]\\)\")",
+      "PowerShell($cfgDir = \"$env:APPDATA\\\\Claude\"; $cfg = \"$cfgDir\\\\claude_desktop_config.json\"; Write-Output \"APPDATA_Claude_dir_exists: $\\(Test-Path $cfgDir\\)\"; Write-Output \"config_file_exists: $\\(Test-Path $cfg\\)\"; Write-Output \"config_path: $cfg\"; Write-Output \"venv_python_exists: $\\(Test-Path 'E:\\\\MCP-Unity\\\\server\\\\.venv\\\\Scripts\\\\python.exe'\\)\")",
+      "mcp__unity-mcp__unity_ping",
+      "mcp__unity-mcp__unity_get_state",
+      "PowerShell($s = \"E:\\\\UnityProject\\\\FarrKingdomsProject\\\\Packages\\\\com.unitymcp.bridge\\\\Server~\"; python -m venv \"$s\\\\.venv\"; $vpy = \"$s\\\\.venv\\\\Scripts\\\\python.exe\"; & $vpy -m pip install --upgrade pip -q; & $vpy -m pip install -e \"$s\" -q; & $vpy -c \"import asyncio; from unity_mcp import server; print\\('SERVER_OK tools=', [t.name for t in asyncio.run\\(server.mcp.list_tools\\(\\)\\)]\\)\")",
+      "PowerShell($root = \"E:\\\\UnityProject\\\\FarrKingdomsProject\"; Push-Location $root; $f1 = \"Packages/com.unitymcp.bridge/Server~/setup.ps1\"; $f2 = \"Packages/com.unitymcp.bridge/Server~/src/unity_mcp/server.py\"; $r1 = git check-ignore -v $f1; $r2 = git check-ignore -v $f2; Write-Output \\(\"server_py_ignored: \" + [bool]$r2 + \"  rule: \" + $r2\\); Write-Output \\(\"setup_ps1_ignored: \" + [bool]$r1 + \"  rule: \" + $r1\\); Write-Output \"--- root .gitignore tilde patterns ---\"; if \\(Test-Path \"$root\\\\.gitignore\"\\) { Select-String -Path \"$root\\\\.gitignore\" -Pattern '~' | ForEach-Object { $_.Line } } else { Write-Output \"\\(no root .gitignore\\)\" }; Pop-Location)"
+    ]
+  }
+}
