@@ -10,3 +10,6 @@ dist/
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# Claude Code local (per-user) settings
+.claude/settings.local.json
