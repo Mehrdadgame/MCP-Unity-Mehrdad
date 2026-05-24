@@ -3,7 +3,9 @@
     "rootNamespace": "UnityMCP",
     "references": [
         "Unity.InputSystem",
-        "Unity.Timeline"
+        "Unity.Timeline",
+        "Unity.Animation.Rigging",
+        "Unity.2D.Animation.Runtime"
     ],
     "includePlatforms": [
         "Editor"
@@ -29,6 +31,21 @@
             "name": "com.unity.cinemachine",
             "expression": "1.0.0",
             "define": "MCP_CINEMACHINE"
+        },
+        {
+            "name": "com.unity.animation.rigging",
+            "expression": "1.0.0",
+            "define": "MCP_ANIMRIGGING"
+        },
+        {
+            "name": "com.unity.2d.animation",
+            "expression": "1.0.0",
+            "define": "MCP_2DANIM"
+        },
+        {
+            "name": "com.unity.shadergraph",
+            "expression": "1.0.0",
+            "define": "MCP_SHADERGRAPH"
         }
     ],
     "noEngineReferences": false

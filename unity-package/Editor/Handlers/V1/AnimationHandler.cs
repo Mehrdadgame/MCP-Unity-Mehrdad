@@ -6,6 +6,9 @@ using UnityEngine;
 using UnityMCP.Handlers;
 using UnityMCP.Protocol;
 using UnityMCP.Utils;
+#if MCP_ANIMRIGGING
+using UnityEngine.Animations.Rigging;
+#endif
 
 namespace UnityMCP.Handlers.V1
 {
@@ -25,6 +28,7 @@ namespace UnityMCP.Handlers.V1
                 case "add_curve": return AddCurve(p);
                 case "add_object_curve": return AddObjectCurve(p);
                 case "assign_to_animator": return AssignToAnimator(p);
+                case "setup_ik": return SetupIK(p);
                 default: throw UnknownAction(action);
             }
         }
@@ -202,6 +206,64 @@ namespace UnityMCP.Handlers.V1
             foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path)) if (o is Sprite sp) return sp;
             return AssetDatabase.LoadMainAssetAtPath(path);
         }
+
+#if MCP_ANIMRIGGING
+        static object SetupIK(JObject p)
+        {
+            var root = ObjectFinder.Resolve(p["target"]);
+            var rigBuilder = root.GetComponent<RigBuilder>();
+            if (rigBuilder == null) rigBuilder = Undo.AddComponent<RigBuilder>(root);
+
+            var rigGo = new GameObject(OptString(p, "rigName", "Rig"));
+            Undo.RegisterCreatedObjectUndo(rigGo, "Create Rig");
+            rigGo.transform.SetParent(root.transform, false);
+            var rig = rigGo.AddComponent<Rig>();
+            rigBuilder.layers.Add(new RigLayer(rig, true));
+
+            var ikGo = new GameObject(OptString(p, "constraintName", "TwoBoneIK"));
+            Undo.RegisterCreatedObjectUndo(ikGo, "Create IK Constraint");
+            ikGo.transform.SetParent(rigGo.transform, false);
+            var ik = ikGo.AddComponent<TwoBoneIKConstraint>();
+
+            var d = ik.data;
+            if (p["rootBone"] != null) d.root = ObjectFinder.Resolve(p["rootBone"]).transform;
+            if (p["midBone"] != null) d.mid = ObjectFinder.Resolve(p["midBone"]).transform;
+            if (p["tipBone"] != null) d.tip = ObjectFinder.Resolve(p["tipBone"]).transform;
+
+            Transform target;
+            if (p["targetObject"] != null && p["targetObject"].Type != JTokenType.Null)
+                target = ObjectFinder.Resolve(p["targetObject"]).transform;
+            else
+            {
+                var tgo = new GameObject(OptString(p, "targetName", "IK_Target"));
+                Undo.RegisterCreatedObjectUndo(tgo, "Create IK Target");
+                tgo.transform.SetParent(ikGo.transform, false);
+                if (d.tip != null) tgo.transform.position = d.tip.position;
+                target = tgo.transform;
+            }
+            d.target = target;
+            d.targetPositionWeight = 1f;
+            d.targetRotationWeight = 1f;
+            ik.data = d;
+
+            EditorUtility.SetDirty(root);
+            if (root.scene.IsValid()) UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(root.scene);
+            return new
+            {
+                ok = true,
+                rigBuilder = rigBuilder.GetInstanceID(),
+                rig = rigGo.GetInstanceID(),
+                constraint = ikGo.GetInstanceID(),
+                target = target.gameObject.GetInstanceID(),
+            };
+        }
+#else
+        static object SetupIK(JObject p)
+        {
+            throw new HandlerException(ErrorCodes.PACKAGE_ERROR,
+                "Animation Rigging (com.unity.animation.rigging) is not installed. Add it via unity_add_package, then retry.");
+        }
+#endif
 
         static AnimatorState FindState(AnimatorStateMachine sm, string name)
         {

@@ -702,6 +702,23 @@ def unity_animation_add_sprite_curve(clip_path: str, keyframes: list, relative_p
     })
 
 
+@mcp.tool()
+def unity_setup_ik(target: str, root_bone: str = None, mid_bone: str = None, tip_bone: str = None,
+                   target_object: str = None) -> dict:
+    """Set up a 3D Two-Bone IK chain (Animation Rigging) on a character.
+
+    Adds a RigBuilder to `target`, a Rig child, and a TwoBoneIKConstraint. Pass the three
+    bones (e.g. upper-arm/fore-arm/hand or thigh/shin/foot); a target object is created if
+    not provided. Requires com.unity.animation.rigging.
+    """
+    params: dict = {"target": target}
+    if root_bone is not None: params["rootBone"] = root_bone
+    if mid_bone is not None: params["midBone"] = mid_bone
+    if tip_bone is not None: params["tipBone"] = tip_bone
+    if target_object is not None: params["targetObject"] = target_object
+    return _call("animation", "setup_ik", params)
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
