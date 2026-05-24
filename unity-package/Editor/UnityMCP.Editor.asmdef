@@ -5,7 +5,9 @@
         "Unity.InputSystem",
         "Unity.Timeline",
         "Unity.Animation.Rigging",
-        "Unity.2D.Animation.Runtime"
+        "Unity.2D.Animation.Runtime",
+        "UnityEditor.TestRunner",
+        "UnityEngine.TestRunner"
     ],
     "includePlatforms": [
         "Editor"
@@ -46,6 +48,11 @@
             "name": "com.unity.shadergraph",
             "expression": "1.0.0",
             "define": "MCP_SHADERGRAPH"
+        },
+        {
+            "name": "com.unity.test-framework",
+            "expression": "1.0.0",
+            "define": "MCP_TESTFRAMEWORK"
         }
     ],
     "noEngineReferences": false

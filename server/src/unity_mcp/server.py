@@ -743,6 +743,76 @@ def unity_render_camera(target: str, width: int = 1280, height: int = 720) -> Im
     return Image(data=base64.b64decode(data["base64Png"]), format="png")
 
 
+# -- Phase 11 (Build + Test) ------------------------------------------------
+
+@mcp.tool()
+def unity_get_player_settings() -> dict:
+    """Read key Player Settings (company/product name, bundle id, version, scripting backend, active target)."""
+    return _call("build", "get_player_settings")
+
+
+@mcp.tool()
+def unity_set_company_name(name: str) -> dict:
+    """Set PlayerSettings.companyName."""
+    return _call("build", "set_company_name", {"name": name})
+
+
+@mcp.tool()
+def unity_set_product_name(name: str) -> dict:
+    """Set PlayerSettings.productName."""
+    return _call("build", "set_product_name", {"name": name})
+
+
+@mcp.tool()
+def unity_set_define_symbols(symbols: list, group: str = "Standalone") -> dict:
+    """Set scripting define symbols for a build target group (e.g. ['DEBUG_X','FEATURE_Y'])."""
+    return _call("build", "set_define_symbols", {"symbols": symbols, "group": group})
+
+
+@mcp.tool()
+def unity_get_build_targets() -> dict:
+    """List supported build targets and the active one."""
+    return _call("build", "get_build_targets")
+
+
+@mcp.tool()
+def unity_build_player(target: str, output_path: str, development: bool = False, scenes: list = None) -> dict:
+    """Build a player (e.g. target='StandaloneWindows64', output_path='Builds/Game.exe').
+
+    Runs deferred (the editor freezes during the build); poll unity_get_build_result until done.
+    scenes defaults to the enabled scenes in Build Settings.
+    """
+    params: dict = {"target": target, "outputPath": output_path, "development": development}
+    if scenes is not None: params["scenes"] = scenes
+    return _call("build", "build_player", params)
+
+
+@mcp.tool()
+def unity_get_build_result() -> dict:
+    """Get the most recent build_player result ({done, result:{result,totalSize,totalTimeSeconds,...}})."""
+    return _call("build", "get_build_result")
+
+
+@mcp.tool()
+def unity_run_edit_tests(filter: str = None) -> dict:
+    """Run EditMode tests (TestRunnerApi). Poll unity_get_test_results until running=false."""
+    params: dict = {}
+    if filter is not None: params["filter"] = filter
+    return _call("test", "run_editmode_tests", params)
+
+
+@mcp.tool()
+def unity_get_test_results() -> dict:
+    """Get the latest test run results ({running, result:{status,passed,failed,skipped,...}})."""
+    return _call("test", "get_test_results")
+
+
+@mcp.tool()
+def unity_list_tests(mode: str = "EditMode") -> dict:
+    """List tests (mode: EditMode/PlayMode). Retrieval is async — call again to read the populated list."""
+    return _call("test", "list_tests", {"mode": mode})
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
