@@ -7,8 +7,8 @@ using UnityMCP.Handlers;
 namespace UnityMCP.Handlers.V1
 {
     /// <summary>
-    /// Editor-level actions. In Phase 1 this also hosts the smoke path
-    /// (<c>ping</c>, <c>get_state</c>) that proves the full round trip works.
+    /// Editor-level actions: the Phase 1 smoke path (ping, get_state) plus play-mode
+    /// control, menu execution, and an asset refresh.
     /// </summary>
     public class EditorHandler : HandlerBase
     {
@@ -18,6 +18,11 @@ namespace UnityMCP.Handlers.V1
             {
                 case "ping": return Ping();
                 case "get_state": return GetState();
+                case "play": return SetPlaying(true);
+                case "stop": return SetPlaying(false);
+                case "pause": return SetPaused(OptBool(p, "paused", true));
+                case "execute_menu_item": return ExecuteMenuItem(p);
+                case "refresh": AssetDatabase.Refresh(); return new { refreshed = true };
                 default: throw UnknownAction(action);
             }
         }
@@ -46,6 +51,25 @@ namespace UnityMCP.Handlers.V1
                 productName = Application.productName,
                 dataPath = Application.dataPath,
             };
+        }
+
+        static object SetPlaying(bool playing)
+        {
+            EditorApplication.isPlaying = playing;
+            return new { isPlaying = playing };
+        }
+
+        static object SetPaused(bool paused)
+        {
+            EditorApplication.isPaused = paused;
+            return new { isPaused = EditorApplication.isPaused };
+        }
+
+        static object ExecuteMenuItem(JObject p)
+        {
+            string item = RequireString(p, "menuItem");
+            bool executed = EditorApplication.ExecuteMenuItem(item);
+            return new { executed = executed, menuItem = item };
         }
     }
 }

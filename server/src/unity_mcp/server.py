@@ -143,6 +143,95 @@ def unity_recompile_and_wait(force: bool = True, timeout_seconds: float = 180.0)
     return out
 
 
+# -- Phase 2: GameObject / Component / Scene convenience tools --------------
+
+@mcp.tool()
+def unity_create_gameobject(name: str = None, primitive: str = None, parent: str = None,
+                            position: list = None, rotation: list = None, scale: list = None) -> dict:
+    """Create a GameObject in the active scene.
+
+    primitive: optional Cube/Sphere/Capsule/Cylinder/Plane/Quad (omit for an empty GameObject).
+    parent: optional instanceId or hierarchy path to parent under.
+    position/rotation/scale: optional [x,y,z] (local space). Returns the new object's info incl. instanceId.
+    """
+    params: dict = {}
+    if name is not None: params["name"] = name
+    if primitive is not None: params["primitive"] = primitive
+    if parent is not None: params["parent"] = parent
+    if position is not None: params["position"] = position
+    if rotation is not None: params["rotation"] = rotation
+    if scale is not None: params["scale"] = scale
+    return _call("gameobject", "create", params)
+
+
+@mcp.tool()
+def unity_delete_gameobject(target: str) -> dict:
+    """Delete a GameObject. target = instanceId or hierarchy path/name."""
+    return _call("gameobject", "delete", {"target": target})
+
+
+@mcp.tool()
+def unity_find_gameobjects(name: str = None, tag: str = None, path: str = None,
+                           include_inactive: bool = True) -> dict:
+    """Find GameObjects by name, tag, and/or full hierarchy path. Returns all matches."""
+    params: dict = {"includeInactive": include_inactive}
+    if name is not None: params["name"] = name
+    if tag is not None: params["tag"] = tag
+    if path is not None: params["path"] = path
+    return _call("gameobject", "find_all", params)
+
+
+@mcp.tool()
+def unity_get_hierarchy(root: str = None, max_depth: int = 6) -> dict:
+    """Get the scene hierarchy as a tree. root: optional instanceId/path to start from (else all scene roots)."""
+    params: dict = {"maxDepth": max_depth}
+    if root is not None: params["root"] = root
+    return _call("gameobject", "get_hierarchy", params)
+
+
+@mcp.tool()
+def unity_add_component(target: str, type: str, values: dict = None) -> dict:
+    """Add a component by type name (e.g. 'Rigidbody', 'BoxCollider') to a GameObject, optionally setting values."""
+    params: dict = {"target": target, "type": type}
+    if values is not None: params["values"] = values
+    return _call("component", "add", params)
+
+
+@mcp.tool()
+def unity_set_component_property(target: str, type: str, property: str, value: Any) -> dict:
+    """Set one property/field on a component (e.g. type='Rigidbody', property='mass', value=5)."""
+    return _call("component", "set_property",
+                 {"target": target, "type": type, "property": property, "value": value})
+
+
+@mcp.tool()
+def unity_get_components(target: str) -> dict:
+    """List the components on a GameObject."""
+    return _call("component", "list", {"target": target})
+
+
+@mcp.tool()
+def unity_new_scene(path: str = None, additive: bool = False) -> dict:
+    """Create a new scene with default camera+light. If path is given (e.g. 'Assets/Scenes/My.unity'), saves it."""
+    params: dict = {"additive": additive}
+    if path is not None: params["path"] = path
+    return _call("scene", "new", params)
+
+
+@mcp.tool()
+def unity_open_scene(path: str, additive: bool = False) -> dict:
+    """Open a scene by asset path (e.g. 'Assets/Scenes/Main.unity')."""
+    return _call("scene", "open", {"path": path, "additive": additive})
+
+
+@mcp.tool()
+def unity_save_scene(path: str = None) -> dict:
+    """Save the active scene. path optional (Save As to that asset path)."""
+    params: dict = {}
+    if path is not None: params["path"] = path
+    return _call("scene", "save", params)
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
