@@ -295,6 +295,37 @@ def unity_instantiate_prefab(path: str, parent: str = None, position: list = Non
     return _call("prefab", "instantiate", params)
 
 
+# -- Phase 4 (uGUI) convenience tools ---------------------------------------
+
+@mcp.tool()
+def unity_create_canvas(name: str = "Canvas") -> dict:
+    """Create a screen-space UI Canvas (CanvasScaler + GraphicRaycaster) and an EventSystem if missing."""
+    return _call("ui", "create_canvas", {"name": name})
+
+
+@mcp.tool()
+def unity_create_ui_element(type: str, parent: str, name: str = None, text: str = None,
+                            anchored_position: list = None, size: list = None) -> dict:
+    """Create a uGUI element under a Canvas/parent.
+
+    type: Panel/Button/Text/Image/RawImage/InputField/Toggle/Slider/Scrollbar/Dropdown/ScrollView/Empty.
+    parent: instanceId or hierarchy path (must be under a Canvas).
+    text: sets the element's Text (e.g. a Button label). anchored_position/size: [x,y].
+    """
+    params: dict = {"type": type, "parent": parent}
+    if name is not None: params["name"] = name
+    if text is not None: params["text"] = text
+    if anchored_position is not None: params["anchoredPosition"] = anchored_position
+    if size is not None: params["size"] = size
+    return _call("ui", "create_element", params)
+
+
+@mcp.tool()
+def unity_set_ui_text(target: str, text: str) -> dict:
+    """Set the Text on a UI element (or its child Text, e.g. a Button label)."""
+    return _call("ui", "set_text", {"target": target, "text": text})
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
