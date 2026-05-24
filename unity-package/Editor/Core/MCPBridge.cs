@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityMCP.Protocol;
@@ -134,41 +135,49 @@ namespace UnityMCP.Core
 
         static string ProcessMessage(string json)
         {
-            Request request;
+            JObject jo;
             try
             {
-                request = JsonConvert.DeserializeObject<Request>(json);
+                jo = JObject.Parse(json);
             }
             catch (Exception e)
             {
                 return Serialize(Response.Fail(null, ErrorCodes.MALFORMED_REQUEST, "Invalid JSON: " + e.Message));
             }
-
-            if (request == null)
+            if (jo == null)
                 return Serialize(Response.Fail(null, ErrorCodes.MALFORMED_REQUEST, "Empty request."));
+
+            string id = (string)jo["id"];
+            string type = (string)jo["type"];
+            string label = type == "batch"
+                ? "batch:" + ((string)jo["undoGroup"] ?? "?") + " (" + (jo["ops"] is JArray opsArr ? opsArr.Count : 0) + " ops)"
+                : ((string)jo["category"] ?? "?") + "." + ((string)jo["action"] ?? "?");
 
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             Response response;
             try
             {
-                object data = MainThreadDispatcher.Run(() => CommandRouter.Route(request));
-                response = Response.Ok(request.id, data);
+                object data = type == "batch"
+                    ? MainThreadDispatcher.Run(() => BatchExecutor.Execute(jo), 300000)
+                    : MainThreadDispatcher.Run(() => CommandRouter.Route(jo.ToObject<Request>()));
+                response = Response.Ok(id, data);
             }
             catch (HandlerException he)
             {
-                response = Response.Fail(request.id, he.Code, he.Message);
+                response = Response.Fail(id, he.Code, he.Message);
             }
             catch (TimeoutException te)
             {
-                response = Response.Fail(request.id, ErrorCodes.TIMEOUT, te.Message);
+                response = Response.Fail(id, ErrorCodes.TIMEOUT, te.Message);
             }
             catch (Exception e)
             {
-                response = Response.Fail(request.id, ErrorCodes.EXCEPTION, e.Message);
+                response = Response.Fail(id, ErrorCodes.EXCEPTION, e.Message);
             }
             stopwatch.Stop();
 
             response.meta = new ResponseMeta { executionMs = (int)stopwatch.ElapsedMilliseconds };
+            RequestLog.Record(label, response.success, (int)stopwatch.ElapsedMilliseconds);
             return Serialize(response);
         }
 

@@ -813,6 +813,26 @@ def unity_list_tests(mode: str = "EditMode") -> dict:
     return _call("test", "list_tests", {"mode": mode})
 
 
+# -- Phase 12: Batch (one round-trip, one Undo group) -----------------------
+
+@mcp.tool()
+def unity_batch(ops: list, undo_group: str = "MCP Batch", atomic: bool = True) -> dict:
+    """Run many operations in ONE round-trip and ONE Undo group (revert all with one Ctrl+Z).
+
+    ops: a list of {"category","action","params"}. Earlier-created objects can be referenced
+    by name in later ops (e.g. parent a Button under a Canvas created in the same batch).
+    atomic=true reverts the whole batch if any op fails.
+    Returns {success, count, failedIndex, results:[{success, data|error}]}.
+    Example op: {"category":"ui","action":"create_canvas","params":{"name":"Menu"}}.
+    """
+    try:
+        return _client.batch(ops, undo_group=undo_group, atomic=atomic)
+    except UnityConnectionError as exc:
+        raise RuntimeError(str(exc)) from exc
+    except UnityError as exc:
+        raise RuntimeError(f"Unity returned an error: {exc}") from exc
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()

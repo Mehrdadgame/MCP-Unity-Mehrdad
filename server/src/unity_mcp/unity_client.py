@@ -104,6 +104,26 @@ class UnityClient:
             raise UnityError(error.get("code", "UNKNOWN"), error.get("message", "Unknown error"))
         return response.get("data")
 
+    def batch(self, ops: list, undo_group: str = "MCP Batch", atomic: bool = True) -> Any:
+        """Run multiple ops in one round-trip and one Undo group.
+
+        ``ops`` is a list of {category, action, params}. Returns the batch result
+        {success, count, failedIndex, results}. Raises only on transport/protocol errors.
+        """
+        message = {
+            "id": str(uuid.uuid4()),
+            "type": "batch",
+            "undoGroup": undo_group,
+            "atomic": atomic,
+            "ops": ops,
+        }
+        with self._lock:
+            response = self._round_trip(message)
+        if not response.get("success", False):
+            error = response.get("error") or {}
+            raise UnityError(error.get("code", "UNKNOWN"), error.get("message", "Unknown error"))
+        return response.get("data")
+
     def _round_trip(self, message: dict) -> dict:
         # One transparent reconnect: a reused socket may be stale after a reload.
         last_exc: Optional[Exception] = None
