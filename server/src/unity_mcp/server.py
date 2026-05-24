@@ -482,6 +482,81 @@ def unity_uss_add_rule(uss_path: str, selector: str, properties: dict) -> dict:
     return _call("uitoolkit", "add_uss_rule", {"ussPath": uss_path, "selector": selector, "properties": properties})
 
 
+# -- Phase 7 (Animation / Particles / Lighting / Audio) ---------------------
+
+@mcp.tool()
+def unity_create_light(type: str = "Directional", name: str = None, color=None, intensity: float = None,
+                       range: float = None, position: list = None, rotation: list = None) -> dict:
+    """Create a Light (Directional/Point/Spot/Area) in the scene."""
+    params: dict = {"type": type}
+    if name is not None: params["name"] = name
+    if color is not None: params["color"] = color
+    if intensity is not None: params["intensity"] = intensity
+    if range is not None: params["range"] = range
+    if position is not None: params["position"] = position
+    if rotation is not None: params["rotation"] = rotation
+    return _call("lighting", "create_light", params)
+
+
+@mcp.tool()
+def unity_set_fog(enabled: bool = True, color=None, density: float = None, mode: str = None) -> dict:
+    """Toggle/configure scene fog (RenderSettings)."""
+    params: dict = {"enabled": enabled}
+    if color is not None: params["color"] = color
+    if density is not None: params["density"] = density
+    if mode is not None: params["mode"] = mode
+    return _call("lighting", "set_fog", params)
+
+
+@mcp.tool()
+def unity_set_skybox(material_path: str) -> dict:
+    """Set the scene skybox material (RenderSettings.skybox)."""
+    return _call("lighting", "set_skybox", {"materialPath": material_path})
+
+
+@mcp.tool()
+def unity_create_particles(name: str = None, preset: str = "Default", parent: str = None, position: list = None) -> dict:
+    """Create a ParticleSystem. preset: Default/Fire/Smoke/Explosion."""
+    params: dict = {"preset": preset}
+    if name is not None: params["name"] = name
+    if parent is not None: params["parent"] = parent
+    if position is not None: params["position"] = position
+    return _call("particles", "create", params)
+
+
+@mcp.tool()
+def unity_add_audio_source(target: str, clip_path: str = None, volume: float = None,
+                           loop: bool = None, play_on_awake: bool = None, spatial_blend: float = None) -> dict:
+    """Add/configure an AudioSource on a GameObject."""
+    params: dict = {"target": target}
+    if clip_path is not None: params["clipPath"] = clip_path
+    if volume is not None: params["volume"] = volume
+    if loop is not None: params["loop"] = loop
+    if play_on_awake is not None: params["playOnAwake"] = play_on_awake
+    if spatial_blend is not None: params["spatialBlend"] = spatial_blend
+    return _call("audio", "add_source", params)
+
+
+@mcp.tool()
+def unity_create_animator_controller(path: str) -> dict:
+    """Create an AnimatorController asset (e.g. 'Assets/Animations/Player.controller')."""
+    return _call("animation", "create_controller", {"path": path})
+
+
+@mcp.tool()
+def unity_animator_add_state(controller_path: str, state_name: str, clip_path: str = None, layer: int = 0) -> dict:
+    """Add a state to an AnimatorController (optionally with a motion clip)."""
+    params: dict = {"controllerPath": controller_path, "stateName": state_name, "layer": layer}
+    if clip_path is not None: params["clipPath"] = clip_path
+    return _call("animation", "add_state", params)
+
+
+@mcp.tool()
+def unity_assign_animator(target: str, controller_path: str) -> dict:
+    """Add an Animator to a GameObject (if needed) and assign the controller."""
+    return _call("animation", "assign_to_animator", {"target": target, "controllerPath": controller_path})
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
