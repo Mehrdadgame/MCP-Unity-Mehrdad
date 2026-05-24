@@ -4,6 +4,9 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.Events;
+using UnityEditor.Events;
+using System.Reflection;
 using UnityMCP.Handlers;
 using UnityMCP.Protocol;
 using UnityMCP.Utils;
@@ -22,6 +25,7 @@ namespace UnityMCP.Handlers.V1
                 case "set_text": return SetText(p);
                 case "set_rect": return SetRect(p);
                 case "set_color": return SetColor(p);
+                case "bind_onclick": return BindOnClick(p);
                 default: throw UnknownAction(action);
             }
         }
@@ -138,6 +142,33 @@ namespace UnityMCP.Handlers.V1
             if (p["pivot"] != null) rt.pivot = ValueParser.ToVector2(p["pivot"]);
             MarkDirty(go);
             return Info(go);
+        }
+
+        static object BindOnClick(JObject p)
+        {
+            var buttonGo = ObjectFinder.Resolve(p["target"]);
+            var button = buttonGo.GetComponent<Button>();
+            if (button == null) throw new HandlerException(ErrorCodes.NOT_FOUND, "No Button on '" + buttonGo.name + "'.");
+
+            var handlerGo = (p["handlerTarget"] != null && p["handlerTarget"].Type != JTokenType.Null)
+                ? ObjectFinder.Resolve(p["handlerTarget"]) : buttonGo;
+            string compName = RequireString(p, "component");
+            var compType = TypeResolver.ResolveComponentType(compName);
+            if (compType == null) throw new HandlerException(ErrorCodes.TYPE_NOT_FOUND, "Type '" + compName + "' not found.");
+            var comp = handlerGo.GetComponent(compType);
+            if (comp == null) throw new HandlerException(ErrorCodes.NOT_FOUND, "Component '" + compName + "' is not on '" + handlerGo.name + "'.");
+
+            string method = RequireString(p, "method");
+            var mi = compType.GetMethod(method, BindingFlags.Public | BindingFlags.Instance, null, System.Type.EmptyTypes, null);
+            if (mi == null)
+                throw new HandlerException(ErrorCodes.NOT_FOUND, "No public parameterless method '" + method + "' on '" + compName + "'.");
+
+            var action = (UnityAction)System.Delegate.CreateDelegate(typeof(UnityAction), comp, mi);
+            Undo.RecordObject(button, "Bind OnClick");
+            UnityEventTools.AddVoidPersistentListener(button.onClick, action);
+            EditorUtility.SetDirty(button);
+            if (buttonGo.scene.IsValid()) EditorSceneManager.MarkSceneDirty(buttonGo.scene);
+            return new { ok = true, button = buttonGo.name, bound = compName + "." + method };
         }
 
         static DefaultControls.Resources StandardResources()

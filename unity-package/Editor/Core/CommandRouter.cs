@@ -23,6 +23,7 @@ namespace UnityMCP.Core
                 { "asset",      new AssetHandler() },
                 { "prefab",     new PrefabHandler() },
                 { "script",     new ScriptHandler() },
+                { "scriptableobject", new ScriptableObjectHandler() },
                 { "scene",      new SceneHandler() },
                 { "package",    new PackageHandler() },
                 { "console",    new ConsoleHandler() },

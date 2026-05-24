@@ -378,6 +378,65 @@ def unity_assign_material(target: str, material_path: str, slot: int = None) -> 
     return _call("material", "assign_to_renderer", params)
 
 
+# -- Phase 5 (Script / ScriptableObject) + UI button wiring -----------------
+
+@mcp.tool()
+def unity_create_script(path: str, content: str = None, class_name: str = None,
+                        namespace: str = None, base_class: str = None, overwrite: bool = False) -> dict:
+    """Write a C# script to the project (e.g. 'Assets/Scripts/MainMenu.cs').
+
+    Provide full `content`, or omit it to generate a minimal class (class_name/namespace/base_class).
+    Call unity_recompile_and_wait afterwards before using the new type.
+    """
+    params: dict = {"path": path, "overwrite": overwrite}
+    if content is not None: params["content"] = content
+    if class_name is not None: params["className"] = class_name
+    if namespace is not None: params["namespace"] = namespace
+    if base_class is not None: params["baseClass"] = base_class
+    return _call("script", "create", params)
+
+
+@mcp.tool()
+def unity_read_script(path: str) -> dict:
+    """Read a C# script file's contents."""
+    return _call("script", "read", {"path": path})
+
+
+@mcp.tool()
+def unity_bind_button(target: str, component: str, method: str, handler_target: str = None) -> dict:
+    """Wire a uGUI Button's OnClick to a public, parameterless method on a component.
+
+    target: the Button GameObject. component: type name holding the method (e.g. 'MainMenu').
+    method: the method name (e.g. 'Play'). handler_target: GameObject with that component
+    (defaults to the button's own GameObject).
+    """
+    params: dict = {"target": target, "component": component, "method": method}
+    if handler_target is not None: params["handlerTarget"] = handler_target
+    return _call("ui", "bind_onclick", params)
+
+
+@mcp.tool()
+def unity_create_scriptable_class(class_name: str, fields: list = None, namespace: str = None,
+                                  menu_name: str = None, folder: str = "Assets/Scripts") -> dict:
+    """Generate a ScriptableObject C# class with [CreateAssetMenu].
+
+    fields: list of {name, type, default?}. Recompile before creating instances.
+    """
+    params: dict = {"className": class_name, "folder": folder}
+    if fields is not None: params["fields"] = fields
+    if namespace is not None: params["namespace"] = namespace
+    if menu_name is not None: params["menuName"] = menu_name
+    return _call("scriptableobject", "create_class", params)
+
+
+@mcp.tool()
+def unity_create_scriptable_instance(class_name: str, asset_path: str, values: dict = None) -> dict:
+    """Create a ScriptableObject asset instance of a (compiled) class, optionally setting field values."""
+    params: dict = {"className": class_name, "assetPath": asset_path}
+    if values is not None: params["values"] = values
+    return _call("scriptableobject", "create_instance", params)
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
