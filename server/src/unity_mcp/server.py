@@ -97,7 +97,7 @@ def _format_compile(res: dict) -> dict:
 
 
 @mcp.tool()
-def unity_recompile_and_wait(force: bool = True, timeout_seconds: float = 180.0) -> dict:
+def unity_recompile_and_wait(force: bool = False, timeout_seconds: float = 180.0) -> dict:
     """Recompile C# in the Editor and wait for the result.
 
     Use after editing scripts in the package. Transparently rides out the domain
@@ -646,6 +646,60 @@ def unity_timeline_add_track(timeline_path: str, track_type: str = "Animation", 
     params: dict = {"timelinePath": timeline_path, "trackType": track_type}
     if name is not None: params["name"] = name
     return _call("timeline", "add_track", params)
+
+
+# -- Package Manager + animation-curve authoring ----------------------------
+
+@mcp.tool()
+def unity_list_packages() -> dict:
+    """List the project's UPM packages (from Packages/manifest.json)."""
+    return _call("package", "list")
+
+
+@mcp.tool()
+def unity_add_package(id: str, version: str = None) -> dict:
+    """Add a UPM package (e.g. 'com.unity.cinemachine', 'com.unity.animation.rigging').
+
+    UPM resolves asynchronously and usually triggers a recompile/reload; call
+    unity_list_packages after a few seconds to confirm.
+    """
+    params: dict = {"id": id}
+    if version is not None: params["version"] = version
+    return _call("package", "add", params)
+
+
+@mcp.tool()
+def unity_remove_package(id: str, confirm: bool = False) -> dict:
+    """Remove a UPM package (requires confirm=true)."""
+    return _call("package", "remove", {"id": id, "confirm": confirm})
+
+
+@mcp.tool()
+def unity_animation_add_curve(clip_path: str, property: str, keyframes: list,
+                              type: str = "Transform", relative_path: str = "") -> dict:
+    """Author a float animation curve on a clip.
+
+    property e.g. 'localPosition.y' or 'localEulerAngles.z'. keyframes: [{time, value}, ...].
+    type: the animated component (default Transform). relative_path: child path under the
+    animated GameObject (default '' = the object itself). Build walk/idle bobs, rotations, etc.
+    """
+    return _call("animation", "add_curve", {
+        "clipPath": clip_path, "property": property, "keyframes": keyframes,
+        "type": type, "relativePath": relative_path,
+    })
+
+
+@mcp.tool()
+def unity_animation_add_sprite_curve(clip_path: str, keyframes: list, relative_path: str = "") -> dict:
+    """Author a sprite-swap (frame-by-frame) 2D animation on a SpriteRenderer.
+
+    keyframes: [{time, sprite}], where sprite is an asset path or 'builtin:...'. This is the
+    classic 2D walk/idle approach (swap the SpriteRenderer's sprite over time).
+    """
+    return _call("animation", "add_object_curve", {
+        "clipPath": clip_path, "type": "SpriteRenderer", "property": "m_Sprite",
+        "keyframes": keyframes, "relativePath": relative_path,
+    })
 
 
 def main() -> None:

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -21,6 +22,8 @@ namespace UnityMCP.Handlers.V1
                 case "add_transition": return AddTransition(p);
                 case "set_default_state": return SetDefaultState(p);
                 case "create_clip": return CreateClip(p);
+                case "add_curve": return AddCurve(p);
+                case "add_object_curve": return AddObjectCurve(p);
                 case "assign_to_animator": return AssignToAnimator(p);
                 default: throw UnknownAction(action);
             }
@@ -131,6 +134,73 @@ namespace UnityMCP.Handlers.V1
             anim.runtimeAnimatorController = c;
             EditorUtility.SetDirty(go);
             return new { ok = true, controller = c.name };
+        }
+
+        static object AddCurve(JObject p)
+        {
+            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(RequireString(p, "clipPath"));
+            if (clip == null) throw new HandlerException(ErrorCodes.NOT_FOUND, "No AnimationClip at the given clipPath.");
+            string relativePath = OptString(p, "relativePath", "");
+            string typeName = OptString(p, "type", "Transform");
+            var type = TypeResolver.ResolveComponentType(typeName);
+            if (type == null) throw new HandlerException(ErrorCodes.TYPE_NOT_FOUND, "Type '" + typeName + "' not found.");
+            string property = RequireString(p, "property"); // e.g. "localPosition.y", "localEulerAngles.z"
+
+            var curve = new AnimationCurve();
+            if (p["keyframes"] is JArray kfs)
+                foreach (var kf in kfs)
+                {
+                    float time = kf["time"] != null ? kf["time"].Value<float>() : 0f;
+                    float value = kf["value"] != null ? kf["value"].Value<float>() : 0f;
+                    curve.AddKey(time, value);
+                }
+
+            var binding = EditorCurveBinding.FloatCurve(relativePath, type, property);
+            AnimationUtility.SetEditorCurve(clip, binding, curve);
+            EditorUtility.SetDirty(clip);
+            AssetDatabase.SaveAssets();
+            return new { ok = true, keys = curve.length, property = property, clipLength = clip.length };
+        }
+
+        static object AddObjectCurve(JObject p)
+        {
+            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(RequireString(p, "clipPath"));
+            if (clip == null) throw new HandlerException(ErrorCodes.NOT_FOUND, "No AnimationClip at the given clipPath.");
+            string relativePath = OptString(p, "relativePath", "");
+            string typeName = OptString(p, "type", "SpriteRenderer");
+            var type = TypeResolver.ResolveComponentType(typeName);
+            if (type == null) throw new HandlerException(ErrorCodes.TYPE_NOT_FOUND, "Type '" + typeName + "' not found.");
+            string property = OptString(p, "property", "m_Sprite"); // SpriteRenderer sprite
+
+            var keys = new List<ObjectReferenceKeyframe>();
+            if (p["keyframes"] is JArray kfs)
+                foreach (var kf in kfs)
+                {
+                    float time = kf["time"] != null ? kf["time"].Value<float>() : 0f;
+                    string spritePath = kf["sprite"] != null ? kf["sprite"].ToString()
+                        : (kf["asset"] != null ? kf["asset"].ToString() : null);
+                    string sub = kf["subSprite"] != null ? kf["subSprite"].ToString() : null;
+                    keys.Add(new ObjectReferenceKeyframe { time = time, value = LoadSpriteOrAsset(spritePath, sub) });
+                }
+
+            var binding = EditorCurveBinding.PPtrCurve(relativePath, type, property);
+            AnimationUtility.SetObjectReferenceCurve(clip, binding, keys.ToArray());
+            EditorUtility.SetDirty(clip);
+            AssetDatabase.SaveAssets();
+            return new { ok = true, keys = keys.Count, property = property, clipLength = clip.length };
+        }
+
+        static Object LoadSpriteOrAsset(string path, string sub)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            if (path.StartsWith("builtin:")) return AssetDatabase.GetBuiltinExtraResource<Sprite>(path.Substring(8));
+            if (!string.IsNullOrEmpty(sub))
+                foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
+                    if (o is Sprite s && s.name == sub) return s;
+            var single = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (single != null) return single;
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path)) if (o is Sprite sp) return sp;
+            return AssetDatabase.LoadMainAssetAtPath(path);
         }
 
         static AnimatorState FindState(AnimatorStateMachine sm, string name)

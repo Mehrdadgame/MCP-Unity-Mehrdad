@@ -84,7 +84,10 @@ namespace UnityMCP.Handlers.V1
 
         static object Recompile(JObject p)
         {
-            bool force = OptBool(p, "force", true);
+            // Default to incremental (AssetDatabase.Refresh) — only changed assemblies
+            // recompile, which is far faster than a full RequestScriptCompilation. Pass
+            // force=true for a full rebuild.
+            bool force = OptBool(p, "force", false);
             long before = CompileWatcher.LastFinishedTicks;
             EditorApplication.delayCall += () =>
             {
