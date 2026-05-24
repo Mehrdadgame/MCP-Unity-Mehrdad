@@ -557,6 +557,47 @@ def unity_assign_animator(target: str, controller_path: str) -> dict:
     return _call("animation", "assign_to_animator", {"target": target, "controllerPath": controller_path})
 
 
+# -- Phase 8 (2D: Sprite + Tilemap) -----------------------------------------
+
+@mcp.tool()
+def unity_set_sprite(target: str, sprite_path: str, sub_sprite: str = None) -> dict:
+    """Set the sprite on a GameObject's SpriteRenderer (adds one if missing).
+
+    sprite_path: an asset path, or 'builtin:UI/Skin/UISprite.psd' for a built-in sprite.
+    """
+    params: dict = {"target": target, "spritePath": sprite_path}
+    if sub_sprite is not None: params["subSprite"] = sub_sprite
+    return _call("sprite", "set_sprite", params)
+
+
+@mcp.tool()
+def unity_create_grid(name: str = "Grid", cell_size: list = None) -> dict:
+    """Create a 2D Grid GameObject (parent for Tilemaps)."""
+    params: dict = {"name": name}
+    if cell_size is not None: params["cellSize"] = cell_size
+    return _call("tilemap", "create_grid", params)
+
+
+@mcp.tool()
+def unity_create_tilemap(grid_target: str, name: str = "Tilemap", collider: bool = False) -> dict:
+    """Create a Tilemap (+ TilemapRenderer, optional TilemapCollider2D) under a Grid."""
+    return _call("tilemap", "create_tilemap", {"gridTarget": grid_target, "name": name, "collider": collider})
+
+
+@mcp.tool()
+def unity_create_tile(path: str, sprite_path: str, collider_type: str = "Sprite") -> dict:
+    """Create a Tile asset from a sprite (sprite_path may be 'builtin:UI/Skin/UISprite.psd')."""
+    return _call("tilemap", "create_tile_asset",
+                 {"path": path, "spritePath": sprite_path, "colliderType": collider_type})
+
+
+@mcp.tool()
+def unity_paint_tiles(tilemap_target: str, from_cell: list, to_cell: list, tile_path: str) -> dict:
+    """Fill a rectangular box of cells (from_cell [x,y] to to_cell [x,y]) with a tile."""
+    return _call("tilemap", "paint_box",
+                 {"tilemapTarget": tilemap_target, "from": from_cell, "to": to_cell, "tilePath": tile_path})
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()

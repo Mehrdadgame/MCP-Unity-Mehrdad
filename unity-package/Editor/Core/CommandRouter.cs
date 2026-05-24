@@ -26,6 +26,8 @@ namespace UnityMCP.Core
                 { "particles",  new ParticlesHandler() },
                 { "lighting",   new LightingHandler() },
                 { "audio",      new AudioHandler() },
+                { "sprite",     new SpriteHandler() },
+                { "tilemap",    new TilemapHandler() },
                 { "asset",      new AssetHandler() },
                 { "prefab",     new PrefabHandler() },
                 { "script",     new ScriptHandler() },
