@@ -32,6 +32,7 @@ namespace UnityMCP.Core
                 { "cinemachine", new CinemachineHandler() },
                 { "input",      new InputHandler() },
                 { "timeline",   new TimelineHandler() },
+                { "capture",    new CaptureHandler() },
                 { "asset",      new AssetHandler() },
                 { "prefab",     new PrefabHandler() },
                 { "script",     new ScriptHandler() },

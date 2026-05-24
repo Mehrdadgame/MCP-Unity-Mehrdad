@@ -7,10 +7,11 @@ console reading (unity_get_console_logs, unity_clear_console), and compile contr
 
 from __future__ import annotations
 
+import base64
 import time
 from typing import Any, Optional
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 
 from .exceptions import UnityConnectionError, UnityError
 from .unity_client import UnityClient
@@ -717,6 +718,29 @@ def unity_setup_ik(target: str, root_bone: str = None, mid_bone: str = None, tip
     if tip_bone is not None: params["tipBone"] = tip_bone
     if target_object is not None: params["targetObject"] = target_object
     return _call("animation", "setup_ik", params)
+
+
+# -- Phase 10 (Capture / Screenshot) — returns images Claude can see ---------
+
+@mcp.tool()
+def unity_screenshot_scene(width: int = 1280, height: int = 720) -> Image:
+    """Capture the Unity Scene view as a PNG so you can see the current scene."""
+    data = _call("capture", "screenshot_scene_view", {"width": width, "height": height})
+    return Image(data=base64.b64decode(data["base64Png"]), format="png")
+
+
+@mcp.tool()
+def unity_screenshot_game(width: int = 1280, height: int = 720) -> Image:
+    """Capture the Game view (renders the main camera) as a PNG."""
+    data = _call("capture", "screenshot_game_view", {"width": width, "height": height})
+    return Image(data=base64.b64decode(data["base64Png"]), format="png")
+
+
+@mcp.tool()
+def unity_render_camera(target: str, width: int = 1280, height: int = 720) -> Image:
+    """Render a specific Camera GameObject (by instanceId/path/name) to a PNG."""
+    data = _call("capture", "render_camera", {"cameraTarget": target, "width": width, "height": height})
+    return Image(data=base64.b64decode(data["base64Png"]), format="png")
 
 
 def main() -> None:
