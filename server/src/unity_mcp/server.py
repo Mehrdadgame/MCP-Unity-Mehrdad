@@ -598,6 +598,56 @@ def unity_paint_tiles(tilemap_target: str, from_cell: list, to_cell: list, tile_
                  {"tilemapTarget": tilemap_target, "from": from_cell, "to": to_cell, "tilePath": tile_path})
 
 
+# -- Phase 9 (Physics / Input / Timeline; Cinemachine stub) -----------------
+
+@mcp.tool()
+def unity_add_rigidbody(target: str, mass: float = None, use_gravity: bool = None,
+                        is_kinematic: bool = None, dimensions: str = None) -> dict:
+    """Add a Rigidbody (3D) or Rigidbody2D to a GameObject (auto-detected; force with dimensions='2D'/'3D')."""
+    params: dict = {"target": target}
+    if mass is not None: params["mass"] = mass
+    if use_gravity is not None: params["useGravity"] = use_gravity
+    if is_kinematic is not None: params["isKinematic"] = is_kinematic
+    if dimensions is not None: params["dimensions"] = dimensions
+    return _call("physics", "add_rigidbody", params)
+
+
+@mcp.tool()
+def unity_add_collider(target: str, shape: str, is_trigger: bool = False) -> dict:
+    """Add a collider. shape: Box/Sphere/Capsule/Mesh (3D) or Box2D/Circle2D/Capsule2D/Polygon2D (2D)."""
+    return _call("physics", "add_collider", {"target": target, "shape": shape, "isTrigger": is_trigger})
+
+
+@mcp.tool()
+def unity_create_input_actions(path: str, map: str = None) -> dict:
+    """Create an Input System .inputactions asset (optionally with an initial action map).
+    Requires the Input System package."""
+    params: dict = {"path": path}
+    if map is not None: params["map"] = map
+    return _call("input", "create_action_asset", params)
+
+
+@mcp.tool()
+def unity_input_add_binding(path: str, map: str, action: str, binding: str, action_type: str = "Button") -> dict:
+    """Ensure an action exists on a map and add a control binding (e.g. '<Keyboard>/space'). Requires Input System."""
+    _call("input", "add_action", {"path": path, "map": map, "actionName": action, "type": action_type})
+    return _call("input", "add_binding", {"path": path, "map": map, "action": action, "binding": binding})
+
+
+@mcp.tool()
+def unity_create_timeline(path: str) -> dict:
+    """Create a TimelineAsset (.playable). Requires the Timeline package."""
+    return _call("timeline", "create_timeline", {"path": path})
+
+
+@mcp.tool()
+def unity_timeline_add_track(timeline_path: str, track_type: str = "Animation", name: str = None) -> dict:
+    """Add a track to a Timeline. track_type: Animation/Activation/Audio/Playable/Signal/Group."""
+    params: dict = {"timelinePath": timeline_path, "trackType": track_type}
+    if name is not None: params["name"] = name
+    return _call("timeline", "add_track", params)
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()

@@ -1,7 +1,10 @@
 {
     "name": "UnityMCP.Editor",
     "rootNamespace": "UnityMCP",
-    "references": [],
+    "references": [
+        "Unity.InputSystem",
+        "Unity.Timeline"
+    ],
     "includePlatforms": [
         "Editor"
     ],
@@ -11,6 +14,22 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.0.0",
+            "define": "MCP_INPUTSYSTEM"
+        },
+        {
+            "name": "com.unity.timeline",
+            "expression": "1.0.0",
+            "define": "MCP_TIMELINE"
+        },
+        {
+            "name": "com.unity.cinemachine",
+            "expression": "1.0.0",
+            "define": "MCP_CINEMACHINE"
+        }
+    ],
     "noEngineReferences": false
 }
