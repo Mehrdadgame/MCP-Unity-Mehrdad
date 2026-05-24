@@ -19,6 +19,7 @@ namespace UnityMCP.Core
                 { "gameobject", new GameObjectHandler() },
                 { "component",  new ComponentHandler() },
                 { "ui",         new UIHandler() },
+                { "material",   new MaterialHandler() },
                 { "asset",      new AssetHandler() },
                 { "prefab",     new PrefabHandler() },
                 { "script",     new ScriptHandler() },

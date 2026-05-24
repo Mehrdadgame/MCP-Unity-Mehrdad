@@ -326,6 +326,58 @@ def unity_set_ui_text(target: str, text: str) -> dict:
     return _call("ui", "set_text", {"target": target, "text": text})
 
 
+# -- Phase 4 (Material) convenience tools -----------------------------------
+
+@mcp.tool()
+def unity_detect_render_pipeline() -> dict:
+    """Detect the active render pipeline (BuiltIn / URP / HDRP) and its default lit shader."""
+    return _call("material", "detect_pipeline")
+
+
+@mcp.tool()
+def unity_create_material(path: str, shader: str = None, render_pipeline: str = None) -> dict:
+    """Create a material asset (e.g. 'Assets/Materials/Wall.mat').
+
+    shader: optional shader name; if omitted, the default lit shader for the detected
+    pipeline is used (URP -> 'Universal Render Pipeline/Lit', etc.).
+    """
+    params: dict = {"path": path}
+    if shader is not None: params["shader"] = shader
+    if render_pipeline is not None: params["renderPipeline"] = render_pipeline
+    return _call("material", "create", params)
+
+
+@mcp.tool()
+def unity_set_material_color(path: str, color, property: str = None) -> dict:
+    """Set a material color. color = #hex, name, or [r,g,b,a]. property defaults to
+    the pipeline base-color property (_BaseColor on URP/HDRP, _Color on Built-in)."""
+    params: dict = {"path": path, "color": color}
+    if property is not None: params["property"] = property
+    return _call("material", "set_color", params)
+
+
+@mcp.tool()
+def unity_set_material_texture(path: str, texture_path: str, property: str = None) -> dict:
+    """Bind a texture to a material. property defaults to _BaseMap (URP) or _MainTex."""
+    params: dict = {"path": path, "texturePath": texture_path}
+    if property is not None: params["property"] = property
+    return _call("material", "set_texture", params)
+
+
+@mcp.tool()
+def unity_list_material_properties(path: str) -> dict:
+    """List the shader properties available on a material (name, type, description)."""
+    return _call("material", "list_properties", {"path": path})
+
+
+@mcp.tool()
+def unity_assign_material(target: str, material_path: str, slot: int = None) -> dict:
+    """Assign a material to a GameObject's Renderer (or SpriteRenderer). slot = material index (default 0)."""
+    params: dict = {"target": target, "materialPath": material_path}
+    if slot is not None: params["slot"] = slot
+    return _call("material", "assign_to_renderer", params)
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
