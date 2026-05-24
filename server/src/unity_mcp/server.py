@@ -232,6 +232,69 @@ def unity_save_scene(path: str = None) -> dict:
     return _call("scene", "save", params)
 
 
+@mcp.tool()
+def unity_save_all_scenes() -> dict:
+    """Save all open scenes."""
+    return _call("scene", "save_all")
+
+
+# -- Phase 3: Asset / Prefab convenience tools ------------------------------
+
+@mcp.tool()
+def unity_find_assets(filter: str = "", folders: list = None, max_results: int = 200) -> dict:
+    """Search the AssetDatabase. filter uses Unity syntax, e.g. 't:Material wall', 't:Prefab', 'l:MyLabel'.
+
+    folders: optional list of folders to search within (e.g. ['Assets/Prefabs']).
+    Returns matches as {guid, path, type}.
+    """
+    params: dict = {"filter": filter, "maxResults": max_results}
+    if folders is not None: params["folders"] = folders
+    return _call("asset", "find_assets", params)
+
+
+@mcp.tool()
+def unity_create_folder(path: str) -> dict:
+    """Create a project folder (and any missing parents), e.g. 'Assets/Prefabs/Enemies'."""
+    return _call("asset", "create_folder", {"path": path})
+
+
+@mcp.tool()
+def unity_delete_asset(path: str, confirm: bool = False) -> dict:
+    """Delete an asset (not undoable). Pass confirm=True to actually delete."""
+    return _call("asset", "delete", {"path": path, "confirm": confirm})
+
+
+@mcp.tool()
+def unity_save_assets() -> dict:
+    """Write any pending asset changes to disk (AssetDatabase.SaveAssets)."""
+    return _call("asset", "save")
+
+
+@mcp.tool()
+def unity_create_prefab(target: str, path: str, connect: bool = True) -> dict:
+    """Save a scene GameObject as a prefab asset.
+
+    target: instanceId or hierarchy path. path: e.g. 'Assets/Prefabs/Enemy.prefab'.
+    connect=True turns the scene object into an instance of the new prefab.
+    """
+    return _call("prefab", "create", {"target": target, "path": path, "connect": connect})
+
+
+@mcp.tool()
+def unity_instantiate_prefab(path: str, parent: str = None, position: list = None,
+                             name: str = None, unpack: bool = False) -> dict:
+    """Instantiate a prefab into the active scene.
+
+    path: prefab asset path. parent: optional instanceId/path. position: optional [x,y,z].
+    unpack=True breaks the prefab link on the new instance.
+    """
+    params: dict = {"path": path, "unpack": unpack}
+    if parent is not None: params["parent"] = parent
+    if position is not None: params["position"] = position
+    if name is not None: params["name"] = name
+    return _call("prefab", "instantiate", params)
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
