@@ -437,6 +437,51 @@ def unity_create_scriptable_instance(class_name: str, asset_path: str, values: d
     return _call("scriptableobject", "create_instance", params)
 
 
+# -- Phase 6 (UI Toolkit + EditorWindow generator) --------------------------
+
+@mcp.tool()
+def unity_scaffold_editor_window(name: str, menu_path: str = None, title: str = None,
+                                 namespace: str = None, use_uitk: bool = True) -> dict:
+    """Generate a custom EditorWindow (C# + optionally .uxml/.uss) under Assets/Editor.
+
+    name: the class name (e.g. 'LevelDesigner'). menu_path: menu item (default 'Tools/<Title>').
+    Recompile, then unity_open_editor_window(name) to show it.
+    """
+    params: dict = {"name": name, "useUITK": use_uitk}
+    if menu_path is not None: params["menuPath"] = menu_path
+    if title is not None: params["title"] = title
+    if namespace is not None: params["namespace"] = namespace
+    return _call("editorwindow", "scaffold", params)
+
+
+@mcp.tool()
+def unity_open_editor_window(type_name: str) -> dict:
+    """Open a (compiled) EditorWindow by its type name."""
+    return _call("editorwindow", "open_window", {"typeName": type_name})
+
+
+@mcp.tool()
+def unity_uxml_add_element(uxml_path: str, element_type: str, parent_selector: str = "root",
+                           name: str = None, text: str = None, classes: list = None,
+                           attributes: dict = None) -> dict:
+    """Add an element to a UXML file. element_type e.g. Label/Button/TextField/ListView/ScrollView.
+
+    parent_selector: '#name', '.class', a Type, or 'root'. name/text/classes/attributes optional.
+    """
+    params: dict = {"uxmlPath": uxml_path, "elementType": element_type, "parentSelector": parent_selector}
+    if name is not None: params["name"] = name
+    if text is not None: params["text"] = text
+    if classes is not None: params["classes"] = classes
+    if attributes is not None: params["attributes"] = attributes
+    return _call("uitoolkit", "add_element", params)
+
+
+@mcp.tool()
+def unity_uss_add_rule(uss_path: str, selector: str, properties: dict) -> dict:
+    """Append a USS rule (e.g. selector='.header', properties={'font-size':'16px'})."""
+    return _call("uitoolkit", "add_uss_rule", {"ussPath": uss_path, "selector": selector, "properties": properties})
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()

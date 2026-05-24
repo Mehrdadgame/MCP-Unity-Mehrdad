@@ -20,6 +20,8 @@ namespace UnityMCP.Core
                 { "component",  new ComponentHandler() },
                 { "ui",         new UIHandler() },
                 { "material",   new MaterialHandler() },
+                { "editorwindow", new EditorWindowHandler() },
+                { "uitoolkit",  new UIToolkitHandler() },
                 { "asset",      new AssetHandler() },
                 { "prefab",     new PrefabHandler() },
                 { "script",     new ScriptHandler() },
