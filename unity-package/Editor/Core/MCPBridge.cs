@@ -26,6 +26,7 @@ namespace UnityMCP.Core
         static TcpListener _listener;
         static Thread _acceptThread;
         static volatile bool _running;
+        static int _startRetries;
 
         static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
         {
@@ -37,9 +38,15 @@ namespace UnityMCP.Core
             MainThreadDispatcher.Initialize();
             EditorApplication.quitting += Stop;
             AssemblyReloadEvents.beforeAssemblyReload += Stop;
+            // Rebind right after every recompile/domain reload (fires on the main thread,
+            // immediately — no need to wait for the Editor to be focused).
+            AssemblyReloadEvents.afterAssemblyReload += AutoStart;
+            EditorApplication.delayCall += AutoStart; // initial editor load
+        }
 
-            if (EditorPrefs.GetBool(AutoStartKey, true))
-                EditorApplication.delayCall += Start; // wait until the editor is ready
+        static void AutoStart()
+        {
+            if (EditorPrefs.GetBool(AutoStartKey, true)) Start();
         }
 
         public static bool IsRunning { get { return _running; } }
@@ -51,8 +58,13 @@ namespace UnityMCP.Core
             try
             {
                 _listener = new TcpListener(IPAddress.Loopback, DefaultPort);
+                // Allow rebinding a port that may still be in TIME_WAIT from the pre-reload
+                // listener — without this, restart after a recompile can fail with
+                // "address already in use" and the bridge appears disconnected.
+                _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 _listener.Start();
                 _running = true;
+                _startRetries = 0;
 
                 _acceptThread = new Thread(AcceptLoop)
                 {
@@ -66,7 +78,18 @@ namespace UnityMCP.Core
             catch (Exception e)
             {
                 _running = false;
-                Debug.LogError("[MCP] Failed to start bridge on port " + DefaultPort + ": " + e.Message);
+                try { if (_listener != null) _listener.Stop(); } catch { /* ignore */ }
+                _listener = null;
+                _startRetries++;
+                if (_startRetries <= 10)
+                {
+                    Debug.LogWarning("[MCP] Bridge start failed (" + e.Message + "); retry " + _startRetries + " shortly.");
+                    EditorApplication.delayCall += () => { if (!_running) Start(); };
+                }
+                else
+                {
+                    Debug.LogError("[MCP] Bridge failed to start after retries: " + e.Message);
+                }
             }
         }
 

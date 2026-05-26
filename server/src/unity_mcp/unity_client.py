@@ -11,6 +11,7 @@ import json
 import socket
 import struct
 import threading
+import time
 import uuid
 from typing import Any, Optional
 
@@ -124,17 +125,20 @@ class UnityClient:
             raise UnityError(error.get("code", "UNKNOWN"), error.get("message", "Unknown error"))
         return response.get("data")
 
-    def _round_trip(self, message: dict) -> dict:
-        # One transparent reconnect: a reused socket may be stale after a reload.
+    def _round_trip(self, message: dict, retries: int = 6) -> dict:
+        # Retry across brief outages (e.g. the bridge rebinding after a domain reload)
+        # so a recompile window does not surface to the caller as a disconnect.
         last_exc: Optional[Exception] = None
-        for attempt in range(2):
-            sock = self._connect()  # raises UnityConnectionError on a fresh failure
+        for attempt in range(retries):
             try:
+                sock = self._connect()
                 self._send(sock, message)
                 return self._recv(sock)
             except (OSError, UnityConnectionError) as exc:
                 last_exc = exc
                 self.close()
+                if attempt < retries - 1:
+                    time.sleep(0.4)
         if isinstance(last_exc, UnityConnectionError):
             raise last_exc
         raise UnityConnectionError(f"Lost connection to the Unity bridge: {last_exc}") from last_exc
