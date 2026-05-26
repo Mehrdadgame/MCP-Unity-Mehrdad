@@ -22,6 +22,7 @@ namespace UnityMCP.Handlers.V1
                 case "stop": return SetPlaying(false);
                 case "pause": return SetPaused(OptBool(p, "paused", true));
                 case "execute_menu_item": return ExecuteMenuItem(p);
+                case "project_info": return ProjectInfo();
                 case "refresh": AssetDatabase.Refresh(); return new { refreshed = true };
                 default: throw UnknownAction(action);
             }
@@ -70,6 +71,53 @@ namespace UnityMCP.Handlers.V1
             string item = RequireString(p, "menuItem");
             bool executed = EditorApplication.ExecuteMenuItem(item);
             return new { executed = executed, menuItem = item };
+        }
+
+        /// <summary>
+        /// Capability probe: render pipeline, active platform, and which packages are present —
+        /// so Claude can pick the right shaders/UI/input approach before acting.
+        /// </summary>
+        static object ProjectInfo()
+        {
+            return new
+            {
+                productName = Application.productName,
+                unityVersion = Application.unityVersion,
+                platform = EditorUserBuildSettings.activeBuildTarget.ToString(),
+                dataPath = Application.dataPath,
+                renderPipeline = DetectPipeline(),
+                packages = new
+                {
+                    ugui = Has("UnityEngine.UI.Button, UnityEngine.UI"),
+                    textmeshpro = Has("TMPro.TMP_Text, Unity.TextMeshPro"),
+                    inputsystem = Has("UnityEngine.InputSystem.InputAction, Unity.InputSystem"),
+                    uiToolkit = Has("UnityEngine.UIElements.VisualElement, UnityEngine.UIElementsModule"),
+                    cinemachine = Has("Cinemachine.CinemachineVirtualCamera, Cinemachine") || Has("Unity.Cinemachine.CinemachineCamera, Unity.Cinemachine"),
+                    timeline = Has("UnityEngine.Timeline.TimelineAsset, Unity.Timeline"),
+                    addressables = Has("UnityEngine.AddressableAssets.Addressables, Unity.Addressables"),
+                    localization = Has("UnityEngine.Localization.Locale, Unity.Localization"),
+                    shadergraph = Has("UnityEditor.ShaderGraph.ShaderGraphImporter, Unity.ShaderGraph.Editor"),
+                    animationRigging = Has("UnityEngine.Animations.Rigging.RigBuilder, Unity.Animation.Rigging"),
+                    anim2d = Has("UnityEngine.U2D.Animation.SpriteSkin, Unity.2D.Animation.Runtime"),
+                    probuilder = Has("UnityEngine.ProBuilder.ProBuilderMesh, Unity.ProBuilder"),
+                    testframework = Has("UnityEngine.TestTools.TestAttribute, UnityEngine.TestRunner"),
+                },
+            };
+        }
+
+        static bool Has(string assemblyQualifiedName)
+        {
+            return Type.GetType(assemblyQualifiedName) != null;
+        }
+
+        static string DetectPipeline()
+        {
+            var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
+            if (rp == null) return "BuiltIn";
+            string n = rp.GetType().FullName ?? "";
+            if (n.Contains("Universal")) return "URP";
+            if (n.Contains("HighDefinition")) return "HDRP";
+            return "Custom";
         }
     }
 }

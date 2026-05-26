@@ -833,6 +833,26 @@ def unity_batch(ops: list, undo_group: str = "MCP Batch", atomic: bool = True) -
         raise RuntimeError(f"Unity returned an error: {exc}") from exc
 
 
+# -- Capability probe + menu execution (CoplayDev-style) --------------------
+
+@mcp.tool()
+def unity_project_info() -> dict:
+    """Detect project capabilities BEFORE acting: product/version/platform, render
+    pipeline (BuiltIn/URP/HDRP), and which packages are installed (ugui, TextMeshPro,
+    Input System, UI Toolkit, Cinemachine, Timeline, Addressables, Localization,
+    Shader Graph, Animation Rigging, 2D Animation, ProBuilder, Test Framework).
+    Use it to choose correct shader names, UI system, and input approach.
+    """
+    return _call("editor", "project_info")
+
+
+@mcp.tool()
+def unity_execute_menu_item(menu_item: str) -> dict:
+    """Run any Unity Editor menu command by path, e.g. 'GameObject/Align With View',
+    'Assets/Reimport All', 'Window/General/Console'. Returns whether it executed."""
+    return _call("editor", "execute_menu_item", {"menuItem": menu_item})
+
+
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
     mcp.run()
