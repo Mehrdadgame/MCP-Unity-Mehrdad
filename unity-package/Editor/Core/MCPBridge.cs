@@ -27,6 +27,7 @@ namespace UnityMCP.Core
         static Thread _acceptThread;
         static volatile bool _running;
         static int _startRetries;
+        static double _nextWatchdogCheck;
 
         static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
         {
@@ -42,11 +43,31 @@ namespace UnityMCP.Core
             // immediately — no need to wait for the Editor to be focused).
             AssemblyReloadEvents.afterAssemblyReload += AutoStart;
             EditorApplication.delayCall += AutoStart; // initial editor load
+            EditorApplication.update += Watchdog;     // self-heal if the listener ever dies
         }
 
         static void AutoStart()
         {
             if (EditorPrefs.GetBool(AutoStartKey, true)) Start();
+        }
+
+        /// <summary>
+        /// Periodic self-heal: if the bridge somehow isn't listening (a missed reload event,
+        /// an accept-loop fault, a stale port), bring it back within ~5s — so the Python
+        /// server can always reconnect after Claude Desktop restarts it.
+        /// </summary>
+        static void Watchdog()
+        {
+            if (EditorApplication.timeSinceStartup < _nextWatchdogCheck) return;
+            _nextWatchdogCheck = EditorApplication.timeSinceStartup + 5.0;
+
+            if (!_running
+                && !EditorApplication.isCompiling
+                && !EditorApplication.isUpdating
+                && EditorPrefs.GetBool(AutoStartKey, true))
+            {
+                Start();
+            }
         }
 
         public static bool IsRunning { get { return _running; } }

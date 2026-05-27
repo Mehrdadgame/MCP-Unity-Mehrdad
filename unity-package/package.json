@@ -1,6 +1,6 @@
 {
   "name": "com.unitymcp.bridge",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "displayName": "Unity MCP Bridge",
   "description": "An MCP bridge that lets Claude drive the Unity Editor over a local TCP connection. Phase 1: foundation (bridge, command router, main-thread dispatcher, length-prefixed JSON protocol, nine v1 handlers, and editor.ping / editor.get_state smoke actions).",
   "unity": "2021.3",
