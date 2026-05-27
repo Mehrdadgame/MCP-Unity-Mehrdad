@@ -8,6 +8,8 @@ console reading (unity_get_console_logs, unity_clear_console), and compile contr
 from __future__ import annotations
 
 import base64
+import logging
+import sys
 import time
 from typing import Any, Optional
 
@@ -15,6 +17,15 @@ from mcp.server.fastmcp import FastMCP, Image
 
 from .exceptions import UnityConnectionError, UnityError
 from .unity_client import UnityClient
+
+# Log to stderr ONLY — stdout is reserved for the MCP JSON-RPC stream over stdio,
+# and any stray stdout write would corrupt the protocol and drop the connection.
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stderr,
+    format="%(asctime)s [unity-mcp] %(levelname)s %(message)s",
+)
+log = logging.getLogger("unity_mcp")
 
 mcp = FastMCP("unity-mcp")
 _client = UnityClient()
@@ -25,6 +36,7 @@ def _call(category: str, action: str, params: Optional[dict] = None) -> Any:
     try:
         return _client.request(category, action, params)
     except UnityConnectionError as exc:
+        log.warning("bridge unreachable for %s.%s: %s", category, action, exc)
         raise RuntimeError(str(exc)) from exc
     except UnityError as exc:
         raise RuntimeError(f"Unity returned an error: {exc}") from exc
@@ -855,7 +867,16 @@ def unity_execute_menu_item(menu_item: str) -> dict:
 
 def main() -> None:
     """Console-script entry point: serve over stdio for Claude Desktop / Claude Code."""
-    mcp.run()
+    log.info("unity-mcp server starting (stdio transport)")
+    try:
+        mcp.run()
+    except Exception:
+        log.exception("unity-mcp server crashed")
+        raise
+    finally:
+        # A clean stop here (no traceback above) means the client closed stdin
+        # (e.g. Claude Desktop renderer reload) — not a crash on our side.
+        log.info("unity-mcp server stopped")
 
 
 if __name__ == "__main__":
