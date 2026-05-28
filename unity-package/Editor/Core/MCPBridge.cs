@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -28,6 +29,8 @@ namespace UnityMCP.Core
         static volatile bool _running;
         static int _startRetries;
         static double _nextWatchdogCheck;
+        static int _activePort = DefaultPort;
+        const int MaxPortAttempts = 10;
 
         static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
         {
@@ -71,46 +74,61 @@ namespace UnityMCP.Core
         }
 
         public static bool IsRunning { get { return _running; } }
-        public static int Port { get { return DefaultPort; } }
+        public static int Port { get { return _activePort; } }
 
         public static void Start()
         {
             if (_running) return;
-            try
+
+            // Try the default port, then walk forward — sidesteps any phantom/leaked
+            // listener (e.g. a previous Unity crash that left a zombie socket on 6400).
+            Exception lastEx = null;
+            for (int port = DefaultPort; port < DefaultPort + MaxPortAttempts; port++)
             {
-                _listener = new TcpListener(IPAddress.Loopback, DefaultPort);
-                // Allow rebinding a port that may still be in TIME_WAIT from the pre-reload
-                // listener — without this, restart after a recompile can fail with
-                // "address already in use" and the bridge appears disconnected.
-                _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                _listener.Start();
-                _running = true;
-                _startRetries = 0;
-
-                _acceptThread = new Thread(AcceptLoop)
+                try
                 {
-                    IsBackground = true,
-                    Name = "MCP-Bridge-Accept",
-                };
-                _acceptThread.Start();
+                    _listener = new TcpListener(IPAddress.Loopback, port);
+                    _listener.Start();
+                    _running = true;
+                    _activePort = port;
+                    _startRetries = 0;
+                    WritePortFile(); // publish the active port so the Python client can find it
 
-                Debug.Log("[MCP] Bridge listening on 127.0.0.1:" + DefaultPort);
+                    _acceptThread = new Thread(AcceptLoop)
+                    {
+                        IsBackground = true,
+                        Name = "MCP-Bridge-Accept",
+                    };
+                    _acceptThread.Start();
+
+                    if (port == DefaultPort)
+                        Debug.Log("[MCP] Bridge listening on 127.0.0.1:" + port);
+                    else
+                        Debug.LogWarning("[MCP] Bridge listening on 127.0.0.1:" + port
+                            + " (fell back from " + DefaultPort + "; another process holds it).");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    lastEx = ex;
+                    try { if (_listener != null) _listener.Stop(); } catch { /* ignore */ }
+                    _listener = null;
+                }
             }
-            catch (Exception e)
+
+            // Every port in the range was unavailable.
+            _running = false;
+            _startRetries++;
+            if (_startRetries <= 5)
             {
-                _running = false;
-                try { if (_listener != null) _listener.Stop(); } catch { /* ignore */ }
-                _listener = null;
-                _startRetries++;
-                if (_startRetries <= 10)
-                {
-                    Debug.LogWarning("[MCP] Bridge start failed (" + e.Message + "); retry " + _startRetries + " shortly.");
-                    EditorApplication.delayCall += () => { if (!_running) Start(); };
-                }
-                else
-                {
-                    Debug.LogError("[MCP] Bridge failed to start after retries: " + e.Message);
-                }
+                Debug.LogWarning("[MCP] Bridge bind failed on " + DefaultPort + ".." + (DefaultPort + MaxPortAttempts - 1)
+                    + " (" + (lastEx != null ? lastEx.Message : "?") + "); retry " + _startRetries + " shortly.");
+                EditorApplication.delayCall += () => { if (!_running) Start(); };
+            }
+            else
+            {
+                Debug.LogError("[MCP] Bridge could not bind any port in range: "
+                    + (lastEx != null ? lastEx.Message : "unknown"));
             }
         }
 
@@ -228,6 +246,27 @@ namespace UnityMCP.Core
         static string Serialize(Response response)
         {
             return JsonConvert.SerializeObject(response, SerializerSettings);
+        }
+
+        // -- port discovery file --
+        // Writes the active port to %LOCALAPPDATA%\UnityMCP\port.txt so the Python
+        // client can connect to the right port even when the default is taken by a
+        // zombie/phantom listener.
+        static void WritePortFile()
+        {
+            try
+            {
+                string path = PortFilePath();
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllText(path, _activePort.ToString());
+            }
+            catch { /* best-effort */ }
+        }
+
+        static string PortFilePath()
+        {
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return Path.Combine(localAppData, "UnityMCP", "port.txt");
         }
     }
 }
