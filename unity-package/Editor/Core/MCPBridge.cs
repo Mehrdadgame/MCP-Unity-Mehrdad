@@ -22,7 +22,12 @@ namespace UnityMCP.Core
     public static class MCPBridge
     {
         public const int DefaultPort = 6400;
-        const string AutoStartKey = "MCP.AutoStart";
+        // "The user wants the bridge running." Default TRUE. Only an explicit menu
+        // Stop sets it false; involuntary stops (domain reload, editor quit) never
+        // touch it, so the bridge always self-restarts after a recompile.
+        // NOTE: a fresh key (not the old "MCP.AutoStart") so any stale false value
+        // from the removed Toggle Auto-Start menu can't keep recovery disabled.
+        const string EnabledKey = "MCP.Enabled";
 
         static TcpListener _listener;
         static Thread _acceptThread;
@@ -40,8 +45,9 @@ namespace UnityMCP.Core
         static MCPBridge()
         {
             MainThreadDispatcher.Initialize();
-            EditorApplication.quitting += Stop;
-            AssemblyReloadEvents.beforeAssemblyReload += Stop;
+            // Involuntary teardown only — these must NOT disable auto-recovery.
+            EditorApplication.quitting += StopListener;
+            AssemblyReloadEvents.beforeAssemblyReload += StopListener;
             // Rebind right after every recompile/domain reload (fires on the main thread,
             // immediately — no need to wait for the Editor to be focused).
             AssemblyReloadEvents.afterAssemblyReload += AutoStart;
@@ -49,15 +55,21 @@ namespace UnityMCP.Core
             EditorApplication.update += Watchdog;     // self-heal if the listener ever dies
         }
 
+        public static bool Enabled
+        {
+            get { return EditorPrefs.GetBool(EnabledKey, true); }
+            set { EditorPrefs.SetBool(EnabledKey, value); }
+        }
+
         static void AutoStart()
         {
-            if (EditorPrefs.GetBool(AutoStartKey, true)) Start();
+            if (Enabled) Start();
         }
 
         /// <summary>
-        /// Periodic self-heal: if the bridge somehow isn't listening (a missed reload event,
-        /// an accept-loop fault, a stale port), bring it back within ~5s — so the Python
-        /// server can always reconnect after Claude Desktop restarts it.
+        /// Periodic self-heal: if the bridge isn't listening but should be (a missed
+        /// reload event, an accept-loop fault, a stale port), bring it back within ~5s —
+        /// so the Python server can always reconnect after Claude Desktop restarts it.
         /// </summary>
         static void Watchdog()
         {
@@ -65,9 +77,9 @@ namespace UnityMCP.Core
             _nextWatchdogCheck = EditorApplication.timeSinceStartup + 5.0;
 
             if (!_running
+                && Enabled
                 && !EditorApplication.isCompiling
-                && !EditorApplication.isUpdating
-                && EditorPrefs.GetBool(AutoStartKey, true))
+                && !EditorApplication.isUpdating)
             {
                 Start();
             }
@@ -75,6 +87,20 @@ namespace UnityMCP.Core
 
         public static bool IsRunning { get { return _running; } }
         public static int Port { get { return _activePort; } }
+
+        /// <summary>Menu "Start": mark the bridge as wanted (persists across reloads) and start it.</summary>
+        public static void Enable()
+        {
+            Enabled = true;
+            Start();
+        }
+
+        /// <summary>Menu "Stop": the only way to keep the bridge down across reloads.</summary>
+        public static void Disable()
+        {
+            Enabled = false;
+            StopListener();
+        }
 
         public static void Start()
         {
@@ -132,7 +158,11 @@ namespace UnityMCP.Core
             }
         }
 
-        public static void Stop()
+        /// <summary>
+        /// Tears down the socket WITHOUT changing the Enabled pref. Used for domain
+        /// reloads and editor quit, so the bridge always comes back on its own.
+        /// </summary>
+        static void StopListener()
         {
             if (!_running && _listener == null) return;
             _running = false;

@@ -36,8 +36,8 @@ namespace UnityMCP.UI
             var row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
             row.style.marginBottom = 8;
-            row.Add(new Button(() => { MCPBridge.Start(); Refresh(); }) { text = "Start" });
-            row.Add(new Button(() => { MCPBridge.Stop(); Refresh(); }) { text = "Stop" });
+            row.Add(new Button(() => { MCPBridge.Enable(); Refresh(); }) { text = "Start" });
+            row.Add(new Button(() => { MCPBridge.Disable(); Refresh(); }) { text = "Stop" });
             row.Add(new Button(() => { RequestLog.Clear(); Refresh(); }) { text = "Clear Log" });
             root.Add(row);
 
